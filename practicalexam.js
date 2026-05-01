@@ -1,96 +1,93 @@
 const express = require("express");
 const app = express();
+const PORT = 3000;
+
 app.use(express.json());
 
-let users = [];
-let port = 3000;
-app.use(function(req, res, next) {
-    console.log("Request received");
-    console.log(req.method + " " + req.url);
+let dataList = [];
+
+app.use((req, res, next) => {
+    const currentTime = new Date().toString();
+    console.log(`Request at ${currentTime}`);
+    console.log(`${req.method} ${req.url}`);
     next();
 });
-app.get("/", function(req, res) {
-    res.json({
-        message: "Server Running"
-    });
-});
-app.get("/users", function(req, res) {
-    res.json({
-        message: "All Users",
-        data: users
-    });
-});
-app.post("/users", function(req, res) {
 
-    let name = req.body.name;
-    let email = req.body.email;
+app.get("/", (req, res) => {
+    res.json({ message: "Server Running" });
+});
+
+app.get("/users", (req, res) => {
+    res.json({ message: "Users retrieved", data: dataList });
+});
+
+app.get("/users/:id", (req, res) => {
+    const userId = req.params.id;
+
+    const foundUser = dataList.find(item => item.id === userId);
+
+    if (!foundUser) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User exists", data: foundUser });
+});
+
+app.post("/users", (req, res) => {
+    const { name, email } = req.body;
 
     if (!name || !email) {
-        res.json({
-            message: "Name and Email required"
-        });
-        return;
+        return res.status(400).json({ message: "Name and Email required" });
     }
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].email == email) {
-            res.json({
-                message: "Email already exists"
-            });
-            return;
-        }
+    const emailCheck = dataList.find(item => item.email === email);
+
+    if (emailCheck) {
+        return res.status(400).json({ message: "Email already exists" });
     }
 
-    let user = {
-        id: users.length + 1,
-        name: name,
-        email: email
+    const newEntry = {
+        id: Date.now().toString(),
+        name,
+        email
     };
 
-    users.push(user);
+    dataList.push(newEntry);
 
-    res.json({
-        message: "User Added",
-        data: user
-    });
+    res.status(201).json({ message: "User Added", data: newEntry });
 });
-app.get("/users/:id", function(req, res) {
 
-    let id = req.params.id;
+app.delete("/users/:id", (req, res) => {
+    const userId = req.params.id;
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id == id) {
-            res.json({
-                message: "User Found",
-                data: users[i]
-            });
-            return;
-        }
+    const foundIndex = dataList.findIndex(item => item.id === userId);
+
+    if (foundIndex === -1) {
+        return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({
-        message: "User not found"
-    });
+    dataList.splice(foundIndex, 1);
+
+    res.json({ message: "User Deleted" });
 });
-app.delete("/users/:id", function(req, res) {
 
-    let id = req.params.id;
+app.post("/login", (req, res) => {
+    const { email, password } = req.body;
 
-    for (let i = 0; i < users.length; i++) {
-        if (users[i].id == id) {
-            users.splice(i, 1);
-
-            res.json({
-                message: "User Deleted"
-            });
-            return;
-        }
+    if (!email || !password) {
+        return res.status(400).json({ message: "All fields required" });
     }
 
-    res.json({
-        message: "User not found"
-    });
+    const adminEmail = "admin@gmail.com";
+    const adminPassword = "1234";
+
+    if (email === adminEmail && password === adminPassword) {
+        return res.json({ message: "Login Success" });
+    }
+
+    res.status(401).json({ message: "Invalid Credentials" });
 });
-app.listen(port, function() {
-    console.log("Server running on port 3000");
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
